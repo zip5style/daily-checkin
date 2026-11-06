@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f2e8">
+  <meta name="description" content="按日期记录计划、完成情况和进度的每日打卡网站。">
+  <title>每日打卡</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%232b6049'/%3E%3Cpath d='M19 33.5l8 8L46 21' fill='none' stroke='%23f7f4e9' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f4f2e8;
+      --page-deep: #e8ebdd;
+      --surface: rgba(255, 255, 252, 0.82);
+      --surface-solid: #fffefa;
+      --ink: #1f382d;
+      --muted: #758278;
+      --line: rgba(45, 87, 65, 0.12);
+      --green: #2f6c50;
+      --green-deep: #214c3a;
+      --green-soft: #dcebdd;
+      --green-pale: #eef4eb;
+      --gold: #c38c3d;
+      --gold-soft: #f3e4c8;
+      --danger: #b85f57;
+      --shadow: 0 24px 70px rgba(48, 74, 54, 0.11);
+      --radius-lg: 30px;
+      --radius-md: 20px;
+      --radius-sm: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 4%, rgba(198, 219, 192, 0.76), transparent 31rem),
+        radial-gradient(circle at 94% 22%, rgba(241, 220, 177, 0.55), transparent 25rem),
+        linear-gradient(145deg, var(--page) 0%, #f8f6ef 48%, var(--page-deep) 100%);
+      font-family: "Avenir Next", "Nunito Sans", "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body[data-profile="b"] {
+      --ink: #382f42;
+      --muted: #80758a;
+      --line: rgba(100, 73, 126, 0.13);
+      --green: #755292;
+      --green-deep: #513967;
+      --green-soft: #eadff2;
+      --green-pale: #f3edf8;
+      --gold: #8b6aa8;
+      --gold-soft: #eadcf2;
+      background:
+        radial-gradient(circle at 8% 4%, rgba(218, 205, 234, 0.82), transparent 31rem),
+        radial-gradient(circle at 94% 22%, rgba(237, 222, 235, 0.54), transparent 25rem),
+        linear-gradient(145deg, #f5f0f8 0%, #fbf8fb 48%, #e9e2ef 100%);
+    }
+
+    body[data-profile="b"]::before,
+    body[data-profile="b"]::after {
+      border-color: rgba(117, 82, 146, 0.1);
+    }
+
+    body::before,
+    body::after {
+      position: fixed;
+      z-index: -1;
+      border: 1px solid rgba(47, 108, 80, 0.1);
+      border-radius: 999px;
+      content: "";
+      pointer-events: none;
+    }
+
+    body::before {
+      top: -18rem;
+      right: -15rem;
+      width: 38rem;
+      height: 38rem;
+    }
+
+    body::after {
+      bottom: -16rem;
+      left: -11rem;
+      width: 31rem;
+      height: 31rem;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    button,
+    label {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid rgba(47, 108, 80, 0.28);
+      outline-offset: 3px;
+    }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .app-shell {
+      width: min(100% - 40px, 820px);
+      margin: 0 auto;
+      padding: 44px 0 32px;
+      animation: page-in 600ms cubic-bezier(0.2, 0.72, 0.24, 1) both;
+    }
+
+    .hero {
+      position: relative;
+      padding: 10px 8px 28px;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      display: grid;
+      flex: 0 0 auto;
+      width: 54px;
+      height: 54px;
+      color: #f8f5eb;
+      background: var(--green-deep);
+      border-radius: 18px 18px 18px 7px;
+      box-shadow: 0 12px 25px rgba(33, 76, 58, 0.2);
+      place-items: center;
+      transform: rotate(-2deg);
+    }
+
+    .brand-mark svg {
+      width: 27px;
+      height: 27px;
+    }
+
+    .profile-switch {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 4px;
+      padding: 5px;
+      background: rgba(255, 254, 250, 0.7);
+      border: 1px solid rgba(47, 108, 80, 0.1);
+      border-radius: 18px;
+      box-shadow: 0 9px 30px rgba(45, 72, 52, 0.06);
+      backdrop-filter: blur(14px);
+    }
+
+    .profile-tab {
+      display: inline-flex;
+      min-width: 126px;
+      min-height: 48px;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 13px 7px 8px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition:
+        color 180ms ease,
+        background-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+    }
+
+    .profile-tab:hover {
+      color: var(--ink);
+      background: var(--green-pale);
+    }
+
+    .profile-tab:active {
+      transform: scale(0.98);
+    }
+
+    .profile-tab[aria-pressed="true"] {
+      color: #fffdf7;
+      box-shadow: 0 7px 16px rgba(33, 76, 58, 0.16);
+    }
+
+    .profile-tab[data-profile-id="a"][aria-pressed="true"] {
+      background: #285b43;
+    }
+
+    .profile-tab[data-profile-id="b"][aria-pressed="true"] {
+      background: #6f4f8d;
+      box-shadow: 0 7px 16px rgba(81, 57, 103, 0.2);
+    }
+
+    .profile-avatar {
+      display: grid;
+      flex: 0 0 auto;
+      width: 33px;
+      height: 33px;
+      color: var(--green-deep);
+      background: var(--green-pale);
+      border-radius: 10px 10px 10px 4px;
+      font-family: "STSong", "Songti SC", serif;
+      font-size: 1rem;
+      font-weight: 700;
+      place-items: center;
+    }
+
+    .profile-tab[data-profile-id="b"] .profile-avatar {
+      color: #684a84;
+      background: #efe7f5;
+    }
+
+    .profile-tab[aria-pressed="true"] .profile-avatar {
+      color: var(--green-deep);
+      background: rgba(255, 253, 247, 0.9);
+    }
+
+    .profile-tab-copy {
+      display: grid;
+      min-width: 0;
+      gap: 1px;
+    }
+
+    .profile-name {
+      font-size: 0.77rem;
+      font-weight: 850;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .profile-tab-count {
+      color: currentColor;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      line-height: 1.2;
+      opacity: 0.65;
+      white-space: nowrap;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--green);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.19em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "STSong", "Songti SC", "Noto Serif CJK SC", serif;
+      font-size: clamp(2.25rem, 7vw, 3.65rem);
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      line-height: 1.04;
+    }
+
+    .hero-subtitle {
+      max-width: 31rem;
+      margin: 17px 0 26px;
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.8;
+    }
+
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      max-width: 100%;
+      padding: 7px;
+      border: 1px solid rgba(47, 108, 80, 0.1);
+      background: rgba(255, 254, 250, 0.62);
+      border-radius: 18px;
+      box-shadow: 0 8px 28px rgba(45, 72, 52, 0.05);
+      backdrop-filter: blur(14px);
+    }
+
+    .date-arrow,
+    .today-button {
+      display: inline-grid;
+      min-width: 42px;
+      height: 42px;
+      padding: 0 12px;
+      border: 0;
+      background: transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      place-items: center;
+      transition: background-color 160ms ease, transform 160ms ease;
+    }
+
+    .date-arrow:hover,
+    .today-button:hover {
+      background: var(--green-pale);
+    }
+
+    .date-arrow:active,
+    .today-button:active {
+      transform: scale(0.95);
+    }
+
+    .date-arrow svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .date-control {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      padding: 0 3px 0 10px;
+    }
+
+    .date-control svg {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      color: var(--green);
+    }
+
+    #date-input {
+      width: 145px;
+      min-width: 0;
+      padding: 9px 2px;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #date-input::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.55;
+    }
+
+    .today-button {
+      width: auto;
+      min-width: 0;
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .storage-warning {
+      margin: 0 0 16px;
+      padding: 12px 16px;
+      color: #744f1c;
+      background: rgba(250, 235, 201, 0.88);
+      border: 1px solid rgba(172, 119, 43, 0.19);
+      border-radius: var(--radius-sm);
+      font-size: 0.84rem;
+      line-height: 1.55;
+    }
+
+    .progress-panel {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      padding: 25px 26px 24px;
+      color: #f9f7ef;
+      background:
+        radial-gradient(circle at 100% 0, rgba(197, 226, 191, 0.2), transparent 17rem),
+        linear-gradient(135deg, var(--green-deep), #2e6a4f);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 55px rgba(30, 73, 54, 0.2);
+    }
+
+    .progress-panel::after {
+      position: absolute;
+      z-index: -1;
+      top: -54px;
+      right: -45px;
+      width: 160px;
+      height: 160px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 25px rgba(255, 255, 255, 0.025),
+        0 0 0 53px rgba(255, 255, 255, 0.02);
+      content: "";
+    }
+
+    .progress-panel.is-complete {
+      background:
+        radial-gradient(circle at 100% 0, rgba(255, 239, 196, 0.23), transparent 18rem),
+        linear-gradient(135deg, #214c3a, #436d4d);
+    }
+
+    body[data-profile="b"] .brand-mark {
+      box-shadow: 0 12px 25px rgba(81, 57, 103, 0.2);
+    }
+
+    body[data-profile="b"] .profile-switch,
+    body[data-profile="b"] .date-nav {
+      border-color: rgba(117, 82, 146, 0.12);
+      box-shadow: 0 9px 30px rgba(81, 57, 103, 0.07);
+    }
+
+    body[data-profile="b"] .progress-panel {
+      background:
+        radial-gradient(circle at 100% 0, rgba(232, 212, 245, 0.22), transparent 17rem),
+        linear-gradient(135deg, #513967, #78558f);
+      box-shadow: 0 25px 55px rgba(72, 49, 94, 0.21);
+    }
+
+    body[data-profile="b"] .progress-panel.is-complete {
+      background:
+        radial-gradient(circle at 100% 0, rgba(224, 200, 242, 0.25), transparent 18rem),
+        linear-gradient(135deg, #4f3768, #766184);
+    }
+
+    body[data-profile="b"] .progress-fill {
+      background: linear-gradient(90deg, #c8a9df, #ead1e8);
+      box-shadow: 0 0 20px rgba(232, 213, 246, 0.24);
+    }
+
+    body[data-profile="b"] button:focus-visible,
+    body[data-profile="b"] input:focus-visible {
+      outline-color: rgba(117, 82, 146, 0.32);
+    }
+
+    body[data-profile="b"] #plan-input:focus {
+      background: #fffaff;
+      border-color: rgba(117, 82, 146, 0.4);
+      box-shadow: 0 0 0 4px rgba(117, 82, 146, 0.08);
+    }
+
+    body[data-profile="b"] #plan-input {
+      background: rgba(249, 246, 251, 0.94);
+    }
+
+    body[data-profile="b"] #plan-input:hover {
+      background: #fcf9fd;
+    }
+
+    body[data-profile="b"] .add-plan-button {
+      box-shadow: 0 9px 20px rgba(81, 57, 103, 0.18);
+    }
+
+    body[data-profile="b"] .add-plan-button:hover {
+      box-shadow: 0 12px 23px rgba(81, 57, 103, 0.24);
+    }
+
+    body[data-profile="b"] .plan-item {
+      border-color: rgba(100, 73, 126, 0.09);
+    }
+
+    body[data-profile="b"] .plan-item:hover {
+      border-color: rgba(100, 73, 126, 0.16);
+    }
+
+    body[data-profile="b"] .checkbox-visual {
+      border-color: rgba(117, 82, 146, 0.3);
+    }
+
+    body[data-profile="b"] .task-check:hover .checkbox-visual {
+      border-color: var(--green);
+    }
+
+    body[data-profile="b"] .task-check input:focus-visible + .checkbox-visual {
+      outline-color: rgba(117, 82, 146, 0.3);
+    }
+
+    body[data-profile="b"] .task-check input:checked + .checkbox-visual {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    body[data-profile="b"] .plan-item.is-completed .task-text {
+      text-decoration-color: rgba(117, 82, 146, 0.36);
+    }
+
+    body[data-profile="b"] .edit-input {
+      border-color: rgba(117, 82, 146, 0.32);
+    }
+
+    .progress-top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .progress-kicker {
+      margin: 0 0 7px;
+      color: rgba(244, 249, 240, 0.68);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .progress-message {
+      min-height: 1.6em;
+      margin: 0;
+      color: rgba(249, 247, 239, 0.88);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .progress-number-wrap {
+      display: flex;
+      align-items: flex-start;
+      white-space: nowrap;
+    }
+
+    .progress-number {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: clamp(2.8rem, 9vw, 4.3rem);
+      font-weight: 700;
+      letter-spacing: -0.08em;
+      line-height: 0.9;
+    }
+
+    .progress-unit {
+      margin: 3px 0 0 5px;
+      color: rgba(249, 247, 239, 0.7);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 10px;
+      margin-top: 24px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+    }
+
+    .progress-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      background: linear-gradient(90deg, #b8d9b5, #f1dfb3);
+      border-radius: inherit;
+      box-shadow: 0 0 20px rgba(222, 239, 207, 0.25);
+      transition: width 450ms cubic-bezier(0.22, 0.72, 0.28, 1);
+    }
+
+    .progress-fill::after {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        100deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.27) 50%,
+        transparent 70%
+      );
+      content: "";
+      transform: translateX(-100%);
+      animation: progress-shine 2.8s ease-in-out infinite;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 11px;
+      color: rgba(249, 247, 239, 0.64);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .workspace {
+      margin-top: 18px;
+      padding: 28px;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .workspace-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .workspace-title {
+      margin: 0;
+      font-family: "STSong", "Songti SC", "Noto Serif CJK SC", serif;
+      font-size: 1.65rem;
+      letter-spacing: -0.035em;
+      line-height: 1.25;
+    }
+
+    .selected-date-label {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .plan-count {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      color: var(--green);
+      background: var(--green-pale);
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .plan-form {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .plan-input-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .plan-input-icon {
+      position: absolute;
+      top: 50%;
+      left: 17px;
+      width: 18px;
+      height: 18px;
+      color: #93a195;
+      pointer-events: none;
+      transform: translateY(-50%);
+    }
+
+    #plan-input {
+      width: 100%;
+      height: 54px;
+      padding: 0 18px 0 47px;
+      color: var(--ink);
+      background: rgba(248, 249, 244, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      font-size: 0.96rem;
+      transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    #plan-input::placeholder {
+      color: #9ba59c;
+    }
+
+    #plan-input:hover {
+      background: #fafbf7;
+    }
+
+    #plan-input:focus {
+      background: #fffefa;
+      border-color: rgba(47, 108, 80, 0.36);
+      box-shadow: 0 0 0 4px rgba(47, 108, 80, 0.07);
+      outline: none;
+    }
+
+    #plan-input.is-invalid {
+      border-color: rgba(184, 95, 87, 0.52);
+      animation: input-nudge 240ms ease;
+    }
+
+    .add-plan-button {
+      display: inline-flex;
+      min-width: 102px;
+      height: 54px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 20px;
+      color: #fffdf7;
+      background: var(--green);
+      border: 0;
+      border-radius: 16px;
+      box-shadow: 0 9px 20px rgba(47, 108, 80, 0.17);
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 800;
+      transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .add-plan-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .add-plan-button:hover {
+      background: var(--green-deep);
+      box-shadow: 0 12px 23px rgba(47, 108, 80, 0.22);
+    }
+
+    .add-plan-button:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .input-hint {
+      min-height: 20px;
+      margin: 7px 2px 0;
+      color: var(--danger);
+      font-size: 0.76rem;
+    }
+
+    .plan-list {
+      display: grid;
+      gap: 8px;
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .plan-item {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 11px 10px 13px;
+      background: rgba(255, 255, 252, 0.74);
+      border: 1px solid rgba(45, 87, 65, 0.085);
+      border-radius: 17px;
+      transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+    }
+
+    .plan-item:hover {
+      background: rgba(255, 255, 253, 0.96);
+      border-color: rgba(45, 87, 65, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .task-check {
+      position: relative;
+      display: grid;
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      place-items: center;
+    }
+
+    .task-check input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .checkbox-visual {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      color: transparent;
+      background: #fffefa;
+      border: 1.5px solid rgba(47, 108, 80, 0.28);
+      border-radius: 8px;
+      place-items: center;
+      transition:
+        color 180ms ease,
+        background-color 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+    }
+
+    .checkbox-visual svg {
+      width: 14px;
+      height: 14px;
+      stroke-dasharray: 24;
+      stroke-dashoffset: 24;
+      transition: stroke-dashoffset 220ms ease 50ms;
+    }
+
+    .task-check:hover .checkbox-visual {
+      border-color: var(--green);
+      transform: scale(1.04);
+    }
+
+    .task-check input:focus-visible + .checkbox-visual {
+      outline: 3px solid rgba(47, 108, 80, 0.28);
+      outline-offset: 3px;
+    }
+
+    .task-check input:checked + .checkbox-visual {
+      color: #fff;
+      background: var(--green);
+      border-color: var(--green);
+      transform: scale(1.03);
+    }
+
+    .task-check input:checked + .checkbox-visual svg {
+      stroke-dashoffset: 0;
+    }
+
+    .task-check input:disabled + .checkbox-visual {
+      cursor: default;
+      opacity: 0.65;
+    }
+
+    .task-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.95rem;
+      font-weight: 650;
+      line-height: 1.52;
+      overflow-wrap: anywhere;
+      transition: color 180ms ease, opacity 180ms ease;
+    }
+
+    .plan-item.is-completed .task-text {
+      color: #8b978f;
+      opacity: 0.8;
+      text-decoration: line-through;
+      text-decoration-color: rgba(47, 108, 80, 0.35);
+      text-decoration-thickness: 1.5px;
+    }
+
+    .item-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 2px;
+      opacity: 0.68;
+      transition: opacity 160ms ease;
+    }
+
+    .plan-item:hover .item-actions,
+    .plan-item:focus-within .item-actions {
+      opacity: 1;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      color: #718077;
+      background: transparent;
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+      place-items: center;
+      transition: color 160ms ease, background-color 160ms ease;
+    }
+
+    .icon-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .icon-button:hover {
+      color: var(--green);
+      background: var(--green-pale);
+    }
+
+    .icon-button.delete-button:hover {
+      color: var(--danger);
+      background: #f8ecea;
+    }
+
+    .edit-form {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .edit-input {
+      flex: 1;
+      min-width: 0;
+      height: 39px;
+      padding: 0 11px;
+      color: var(--ink);
+      background: #fffefa;
+      border: 1px solid rgba(47, 108, 80, 0.3);
+      border-radius: 10px;
+      font-size: 0.93rem;
+    }
+
+    .edit-input.is-invalid {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(184, 95, 87, 0.08);
+    }
+
+    .edit-action {
+      height: 36px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .edit-save {
+      color: #fffefa;
+      background: var(--green);
+    }
+
+    .edit-cancel {
+      color: var(--muted);
+      background: #eef1eb;
+    }
+
+    .empty-state {
+      display: grid;
+      min-height: 218px;
+      padding: 31px 20px 20px;
+      text-align: center;
+      place-items: center;
+    }
+
+    .empty-visual {
+      position: relative;
+      display: grid;
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 17px;
+      color: var(--green);
+      background: var(--green-pale);
+      border-radius: 50% 50% 43% 57% / 48% 43% 57% 52%;
+      place-items: center;
+      transform: rotate(-4deg);
+    }
+
+    .empty-visual::after {
+      position: absolute;
+      right: -7px;
+      bottom: -2px;
+      width: 19px;
+      height: 19px;
+      background: var(--gold-soft);
+      border: 3px solid var(--surface-solid);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .empty-visual svg {
+      width: 33px;
+      height: 33px;
+      transform: rotate(4deg);
+    }
+
+    .empty-title {
+      margin: 0 0 7px;
+      font-family: "STSong", "Songti SC", "Noto Serif CJK SC", serif;
+      font-size: 1.14rem;
+      font-weight: 700;
+    }
+
+    .empty-copy {
+      max-width: 23rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.7;
+    }
+
+    .page-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 22px 0 0;
+      color: #8b968d;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .page-footer svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    @keyframes page-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes progress-shine {
+      0%,
+      55% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    @keyframes input-nudge {
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+      30% {
+        transform: translateX(-3px);
+      }
+      65% {
+        transform: translateX(3px);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-shell {
+        width: min(100% - 24px, 820px);
+        padding-top: 25px;
+      }
+
+      .hero {
+        padding-right: 3px;
+        padding-left: 3px;
+      }
+
+      .hero-top {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .profile-switch {
+        align-self: stretch;
+      }
+
+      .profile-tab {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .brand-row {
+        gap: 12px;
+      }
+
+      .brand-mark {
+        width: 47px;
+        height: 47px;
+        border-radius: 15px 15px 15px 6px;
+      }
+
+      .hero-subtitle {
+        margin: 14px 0 21px;
+        font-size: 0.9rem;
+      }
+
+      .date-nav {
+        width: 100%;
+        gap: 3px;
+      }
+
+      .date-control {
+        flex: 1;
+        justify-content: center;
+        padding-left: 2px;
+      }
+
+      #date-input {
+        width: 132px;
+        font-size: 0.83rem;
+      }
+
+      .today-button {
+        padding: 0 9px;
+      }
+
+      .progress-panel {
+        padding: 22px 20px 21px;
+        border-radius: 24px;
+      }
+
+      .progress-top {
+        gap: 12px;
+      }
+
+      .progress-message {
+        font-size: 0.82rem;
+      }
+
+      .progress-number {
+        font-size: 2.9rem;
+      }
+
+      .progress-meta {
+        font-size: 0.7rem;
+      }
+
+      .workspace {
+        padding: 22px 16px;
+        border-radius: 24px;
+      }
+
+      .workspace-heading {
+        margin-bottom: 17px;
+      }
+
+      .workspace-title {
+        font-size: 1.42rem;
+      }
+
+      .plan-form {
+        gap: 7px;
+      }
+
+      #plan-input {
+        height: 51px;
+        padding-right: 13px;
+        padding-left: 42px;
+        font-size: 0.9rem;
+      }
+
+      .plan-input-icon {
+        left: 14px;
+      }
+
+      .add-plan-button {
+        min-width: 58px;
+        height: 51px;
+        padding: 0 15px;
+      }
+
+      .add-button-label {
+        display: none;
+      }
+
+      .plan-item {
+        gap: 8px;
+        padding-right: 7px;
+        padding-left: 10px;
+      }
+
+      .task-check {
+        width: 30px;
+      }
+
+      .task-text {
+        font-size: 0.91rem;
+      }
+
+      .icon-button {
+        width: 34px;
+      }
+
+      .edit-form {
+        flex-wrap: wrap;
+        padding: 3px 0;
+      }
+
+      .edit-input {
+        flex-basis: calc(100% - 1px);
+      }
+
+      .edit-action {
+        height: 32px;
+      }
+
+      .empty-state {
+        min-height: 200px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .eyebrow {
+        font-size: 0.61rem;
+      }
+
+      .today-button {
+        font-size: 0.72rem;
+      }
+
+      .progress-panel {
+        padding-right: 17px;
+        padding-left: 17px;
+      }
+
+      .progress-message {
+        max-width: 13rem;
+      }
+
+      .progress-number {
+        font-size: 2.55rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body data-profile="a">
+  <main class="app-shell">
+    <header class="hero">
+      <div class="hero-top">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 12.4l4.2 4.2L19 6.8" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="eyebrow">Shared daily check-in</span>
+            <h1>每日打卡</h1>
+          </div>
+        </div>
+
+        <div class="profile-switch" role="group" aria-label="切换打卡成员">
+          <button class="profile-tab" id="profile-a" data-profile-id="a" type="button"
+            aria-pressed="true" aria-label="切换到周周的打卡界面">
+            <span class="profile-avatar" aria-hidden="true">周</span>
+            <span class="profile-tab-copy">
+              <span class="profile-name">周周</span>
+              <span class="profile-tab-count" id="profile-a-count">0 / 0</span>
+            </span>
+          </button>
+          <button class="profile-tab" id="profile-b" data-profile-id="b" type="button"
+            aria-pressed="false" aria-label="切换到苏苏的打卡界面">
+            <span class="profile-avatar" aria-hidden="true">苏</span>
+            <span class="profile-tab-copy">
+              <span class="profile-name">苏苏</span>
+              <span class="profile-tab-count" id="profile-b-count">0 / 0</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <p class="hero-subtitle">两个人的小目标，各自记录，也彼此可见。<br>切换成员，看看同一天各自的计划与进度。</p>
+
+      <nav class="date-nav" aria-label="切换日期">
+        <button class="date-arrow" id="previous-day" type="button" aria-label="前一天" title="前一天">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <label class="date-control" for="date-input">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="16" rx="3" stroke="currentColor"
+              stroke-width="1.8"></rect>
+            <path d="M8 3v4M16 3v4M3.5 9.5h17" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round"></path>
+          </svg>
+          <span class="sr-only">选择日期</span>
+          <input id="date-input" type="date" aria-label="选择要查看的日期">
+        </label>
+        <button class="date-arrow" id="next-day" type="button" aria-label="后一天" title="后一天">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <button class="today-button" id="today-button" type="button">回到今天</button>
+      </nav>
+    </header>
+
+    <p class="storage-warning" id="storage-warning" role="status" hidden>
+      当前浏览器无法保存记录，本次更改会在刷新后丢失。请检查浏览器的隐私或存储设置。
+    </p>
+
+    <section class="progress-panel" id="progress-panel" aria-labelledby="progress-heading">
+      <div class="progress-top">
+        <div>
+          <p class="progress-kicker" id="progress-heading">今日进度</p>
+          <p class="progress-message" id="progress-message">从一个小目标开始吧。</p>
+        </div>
+        <div class="progress-number-wrap" aria-hidden="true">
+          <span class="progress-number" id="progress-percent">0</span>
+          <span class="progress-unit">%</span>
+        </div>
+      </div>
+
+      <div class="progress-track" role="progressbar" id="progress-bar" aria-valuemin="0"
+        aria-valuemax="100" aria-valuenow="0" aria-label="当日计划完成进度">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-meta">
+        <span id="completion-count">已完成 0 / 0 项</span>
+        <span id="remaining-count">慢慢来，也会到达</span>
+      </div>
+    </section>
+
+    <section class="workspace" aria-labelledby="workspace-title">
+      <div class="workspace-heading">
+        <div>
+          <h2 class="workspace-title" id="workspace-title">今日计划</h2>
+          <p class="selected-date-label" id="selected-date-label"></p>
+        </div>
+        <span class="plan-count" id="plan-count">0 项</span>
+      </div>
+
+      <form class="plan-form" id="plan-form" novalidate>
+        <div class="plan-input-wrap">
+          <svg class="plan-input-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round"></path>
+          </svg>
+          <label class="sr-only" for="plan-input">添加一项计划</label>
+          <input id="plan-input" type="text" placeholder="写下今天想完成的事…"
+            autocomplete="off" enterkeyhint="done" aria-describedby="input-hint">
+        </div>
+        <button class="add-plan-button" type="submit" aria-label="添加计划">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round"></path>
+          </svg>
+          <span class="add-button-label">添加</span>
+        </button>
+      </form>
+      <p class="input-hint" id="input-hint" role="alert"></p>
+
+      <ul class="plan-list" id="plan-list" aria-label="计划列表"></ul>
+
+      <div class="empty-state" id="empty-state">
+        <div>
+          <div class="empty-visual" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 21v-8M12 13c0-4.2 2.7-7 7-7 0 4.3-2.8 7-7 7Z"
+                stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                stroke-linejoin="round"></path>
+              <path d="M12 16C8.6 16 5 13.8 5 9c3.3 0 6.1 2 7 5"
+                stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <p class="empty-title" id="empty-title">这一天还没有计划</p>
+          <p class="empty-copy" id="empty-copy">在上方写下第一件想完成的事。小小的一步，也算认真生活。</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v9H6z" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span>周周和苏苏的记录仅保存在此浏览器</span>
+    </footer>
+  </main>
+
+  <div class="sr-only" id="live-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const STORAGE_KEY = "dailyCheckin.v2";
+      const LEGACY_STORAGE_KEY = "dailyCheckin.v1";
+      const STORE_VERSION = 2;
+      const PROFILE_IDS = ["a", "b"];
+      const PROFILE_CONFIG = {
+        a: { name: "周周" },
+        b: { name: "苏苏" }
+      };
+      const CHECK_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 12.5l4.1 4L19 6.8" stroke="currentColor" stroke-width="2.4" ' +
+        'stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+      const EDIT_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M4 20h4l11-11-4-4L4 16v4ZM13.8 6.2l4 4" stroke="currentColor" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+      const DELETE_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" ' +
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" ' +
+        'stroke-linejoin="round"></path></svg>';
+
+      const elements = {
+        profileA: document.getElementById("profile-a"),
+        profileB: document.getElementById("profile-b"),
+        profileACount: document.getElementById("profile-a-count"),
+        profileBCount: document.getElementById("profile-b-count"),
+        dateInput: document.getElementById("date-input"),
+        previousDay: document.getElementById("previous-day"),
+        nextDay: document.getElementById("next-day"),
+        todayButton: document.getElementById("today-button"),
+        planForm: document.getElementById("plan-form"),
+        planInput: document.getElementById("plan-input"),
+        inputHint: document.getElementById("input-hint"),
+        planList: document.getElementById("plan-list"),
+        emptyState: document.getElementById("empty-state"),
+        emptyTitle: document.getElementById("empty-title"),
+        emptyCopy: document.getElementById("empty-copy"),
+        workspaceTitle: document.getElementById("workspace-title"),
+        selectedDateLabel: document.getElementById("selected-date-label"),
+        planCount: document.getElementById("plan-count"),
+        progressPanel: document.getElementById("progress-panel"),
+        progressHeading: document.getElementById("progress-heading"),
+        progressMessage: document.getElementById("progress-message"),
+        progressPercent: document.getElementById("progress-percent"),
+        progressBar: document.getElementById("progress-bar"),
+        progressFill: document.getElementById("progress-fill"),
+        completionCount: document.getElementById("completion-count"),
+        remainingCount: document.getElementById("remaining-count"),
+        storageWarning: document.getElementById("storage-warning"),
+        liveRegion: document.getElementById("live-region")
+      };
+
+      let storageAvailable = true;
+      let store = loadStore();
+      let activeProfile = store.activeProfile;
+      let selectedDate = getTodayKey();
+      let editingTaskId = null;
+      let editDraft = "";
+
+      function createEmptyStore() {
+        return {
+          version: STORE_VERSION,
+          activeProfile: "a",
+          profiles: {
+            a: { days: {} },
+            b: { days: {} }
+          }
+        };
+      }
+
+      function isPlainObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function makeId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+        return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      }
+
+      function dateToKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function dateFromKey(key) {
+        if (typeof key !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+          return null;
+        }
+        const [year, month, day] = key.split("-").map(Number);
+        const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+        if (
+          date.getFullYear() !== year ||
+          date.getMonth() !== month - 1 ||
+          date.getDate() !== day
+        ) {
+          return null;
+        }
+        return date;
+      }
+
+      function getTodayKey() {
+        return dateToKey(new Date());
+      }
+
+      function shiftDateKey(key, amount) {
+        const date = dateFromKey(key);
+        if (!date) {
+          return getTodayKey();
+        }
+        date.setDate(date.getDate() + amount);
+        return dateToKey(date);
+      }
+
+      function formatSelectedDate(key) {
+        const date = dateFromKey(key);
+        if (!date) {
+          return "";
+        }
+        const today = getTodayKey();
+        const yesterday = shiftDateKey(today, -1);
+        const tomorrow = shiftDateKey(today, 1);
+        const relative = key === today
+          ? "今天"
+          : key === yesterday
+            ? "昨天"
+            : key === tomorrow
+              ? "明天"
+              : "";
+        const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+        const dateText = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+        return `${relative ? `${relative} · ` : ""}${dateText} · ${weekdays[date.getDay()]}`;
+      }
+
+      function setStorageWarning() {
+        storageAvailable = false;
+        elements.storageWarning.hidden = false;
+      }
+
+      function sanitizeTask(task, seenIds, timestamp) {
+        if (!isPlainObject(task) || typeof task.text !== "string") {
+          return null;
+        }
+        const text = task.text.trim();
+        if (!text) {
+          return null;
+        }
+
+        let id = typeof task.id === "string" && task.id.trim() ? task.id : makeId();
+        while (seenIds.has(id)) {
+          id = makeId();
+        }
+        seenIds.add(id);
+
+        return {
+          id,
+          text,
+          completed: task.completed === true,
+          createdAt: typeof task.createdAt === "string" ? task.createdAt : timestamp
+        };
+      }
+
+      function sanitizeDay(record) {
+        if (!isPlainObject(record)) {
+          return null;
+        }
+        const timestamp = new Date().toISOString();
+        const seenIds = new Set();
+        const tasks = Array.isArray(record.tasks)
+          ? record.tasks
+              .map((task) => sanitizeTask(task, seenIds, timestamp))
+              .filter(Boolean)
+          : [];
+
+        return {
+          tasks,
+          initializedAt:
+            typeof record.initializedAt === "string" ? record.initializedAt : timestamp
+        };
+      }
+
+      function sanitizeDays(rawDays) {
+        if (!isPlainObject(rawDays)) {
+          return {};
+        }
+
+        const days = {};
+        Object.entries(rawDays).forEach(([dateKey, record]) => {
+          if (!dateFromKey(dateKey)) {
+            return;
+          }
+          const cleanDay = sanitizeDay(record);
+          if (cleanDay) {
+            days[dateKey] = cleanDay;
+          }
+        });
+        return days;
+      }
+
+      function sanitizeProfile(profile) {
+        return {
+          days: isPlainObject(profile) ? sanitizeDays(profile.days) : {}
+        };
+      }
+
+      function loadStore() {
+        const emptyStore = createEmptyStore();
+        let raw;
+
+        try {
+          raw = window.localStorage.getItem(STORAGE_KEY);
+        } catch (error) {
+          setStorageWarning();
+          return emptyStore;
+        }
+
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (
+              isPlainObject(parsed) &&
+              parsed.version === STORE_VERSION &&
+              isPlainObject(parsed.profiles)
+            ) {
+              return {
+                version: STORE_VERSION,
+                activeProfile: PROFILE_IDS.includes(parsed.activeProfile)
+                  ? parsed.activeProfile
+                  : "a",
+                profiles: {
+                  a: sanitizeProfile(parsed.profiles.a),
+                  b: sanitizeProfile(parsed.profiles.b)
+                }
+              };
+            }
+          } catch (error) {
+            // Fall through to the previous version when possible.
+          }
+        }
+
+        let legacyRaw;
+        try {
+          legacyRaw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        } catch (error) {
+          setStorageWarning();
+          return emptyStore;
+        }
+
+        if (!legacyRaw) {
+          return emptyStore;
+        }
+
+        try {
+          const legacy = JSON.parse(legacyRaw);
+          if (isPlainObject(legacy) && isPlainObject(legacy.days)) {
+            emptyStore.profiles.a.days = sanitizeDays(legacy.days);
+          }
+        } catch (error) {
+          return emptyStore;
+        }
+        return emptyStore;
+      }
+
+      function saveStore() {
+        if (!storageAvailable) {
+          return;
+        }
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+        } catch (error) {
+          setStorageWarning();
+        }
+      }
+
+      function getActiveProfile() {
+        return store.profiles[activeProfile];
+      }
+
+      function ensureDayRecord(dateKey) {
+        const profile = getActiveProfile();
+        if (!profile.days[dateKey]) {
+          profile.days[dateKey] = {
+            tasks: [],
+            initializedAt: new Date().toISOString()
+          };
+        }
+        return profile.days[dateKey];
+      }
+
+      function initializeToday(profileId = activeProfile) {
+        const profile = store.profiles[profileId];
+        if (!profile) {
+          return;
+        }
+
+        const today = getTodayKey();
+        if (profile.days[today]) {
+          return;
+        }
+
+        const yesterdayKey = shiftDateKey(today, -1);
+        const yesterday = profile.days[yesterdayKey];
+        const carriedTasks = yesterday
+          ? yesterday.tasks
+              .filter((task) => !task.completed)
+              .map((task) => ({
+                id: makeId(),
+                text: task.text,
+                completed: false,
+                createdAt: new Date().toISOString()
+              }))
+          : [];
+
+        profile.days[today] = {
+          tasks: carriedTasks,
+          initializedAt: new Date().toISOString()
+        };
+        saveStore();
+      }
+
+      function getDayTasks(profileId, dateKey) {
+        const profile = store.profiles[profileId];
+        const day = profile && profile.days[dateKey];
+        return day ? day.tasks : [];
+      }
+
+      function getSelectedTasks() {
+        return getDayTasks(activeProfile, selectedDate);
+      }
+
+      function announce(message) {
+        elements.liveRegion.textContent = "";
+        window.requestAnimationFrame(() => {
+          elements.liveRegion.textContent = message;
+        });
+      }
+
+      function showInputError(message) {
+        elements.planInput.classList.add("is-invalid");
+        elements.planInput.setAttribute("aria-invalid", "true");
+        elements.inputHint.textContent = message;
+      }
+
+      function clearInputError() {
+        elements.planInput.classList.remove("is-invalid");
+        elements.planInput.removeAttribute("aria-invalid");
+        elements.inputHint.textContent = "";
+      }
+
+      function findRow(taskId) {
+        return Array.from(elements.planList.children).find(
+          (row) => row.dataset.taskId === taskId
+        );
+      }
+
+      function focusAfterRender(taskId, selector) {
+        window.requestAnimationFrame(() => {
+          const row = findRow(taskId);
+          if (row) {
+            const target = row.querySelector(selector);
+            if (target) {
+              target.focus();
+            }
+          }
+        });
+      }
+
+      function toggleTask(taskId) {
+        const task = getSelectedTasks().find((item) => item.id === taskId);
+        if (!task) {
+          return;
+        }
+        task.completed = !task.completed;
+        editingTaskId = null;
+        saveStore();
+        render();
+        focusAfterRender(taskId, 'input[type="checkbox"]');
+        announce(task.completed ? `已完成：${task.text}` : `已取消完成：${task.text}`);
+      }
+
+      function beginEdit(task) {
+        editingTaskId = task.id;
+        editDraft = task.text;
+        renderList();
+        focusAfterRender(task.id, ".edit-input");
+      }
+
+      function cancelEdit(taskId) {
+        editingTaskId = null;
+        editDraft = "";
+        renderList();
+        focusAfterRender(taskId, ".edit-button");
+      }
+
+      function saveEdit(taskId, submittedText) {
+        const text = submittedText.trim();
+        if (!text) {
+          const row = findRow(taskId);
+          const input = row && row.querySelector(".edit-input");
+          if (input) {
+            input.classList.add("is-invalid");
+            input.setAttribute("aria-invalid", "true");
+            input.focus();
+          }
+          announce("计划内容不能为空。");
+          return;
+        }
+
+        const task = getSelectedTasks().find((item) => item.id === taskId);
+        if (!task) {
+          return;
+        }
+        task.text = text;
+        editingTaskId = null;
+        editDraft = "";
+        saveStore();
+        render();
+        focusAfterRender(taskId, ".edit-button");
+        announce(`计划已更新：${text}`);
+      }
+
+      function deleteTask(task) {
+        const confirmed = window.confirm(`确定删除这项计划吗？\n\n“${task.text}”`);
+        if (!confirmed) {
+          return;
+        }
+
+        const day = ensureDayRecord(selectedDate);
+        day.tasks = day.tasks.filter((item) => item.id !== task.id);
+        if (editingTaskId === task.id) {
+          editingTaskId = null;
+          editDraft = "";
+        }
+        saveStore();
+        render();
+        elements.planInput.focus();
+        announce(`已删除：${task.text}`);
+      }
+
+      function createEditForm(task) {
+        const form = document.createElement("form");
+        form.className = "edit-form";
+        form.noValidate = true;
+
+        const input = document.createElement("input");
+        input.className = "edit-input";
+        input.type = "text";
+        input.value = editDraft;
+        input.setAttribute("aria-label", `编辑计划：${task.text}`);
+
+        const saveButton = document.createElement("button");
+        saveButton.className = "edit-action edit-save";
+        saveButton.type = "submit";
+        saveButton.textContent = "保存";
+
+        const cancelButton = document.createElement("button");
+        cancelButton.className = "edit-action edit-cancel";
+        cancelButton.type = "button";
+        cancelButton.textContent = "取消";
+
+        input.addEventListener("input", () => {
+          editDraft = input.value;
+          input.classList.remove("is-invalid");
+          input.removeAttribute("aria-invalid");
+        });
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            cancelEdit(task.id);
+          }
+        });
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          saveEdit(task.id, input.value);
+        });
+
+        cancelButton.addEventListener("click", () => cancelEdit(task.id));
+
+        form.append(input, saveButton, cancelButton);
+        return form;
+      }
+
+      function createTaskRow(task) {
+        const isEditing = task.id === editingTaskId;
+        const row = document.createElement("li");
+        row.className = "plan-item";
+        if (task.completed) {
+          row.classList.add("is-completed");
+        }
+        if (isEditing) {
+          row.classList.add("is-editing");
+        }
+        row.dataset.taskId = task.id;
+
+        const checkLabel = document.createElement("label");
+        checkLabel.className = "task-check";
+        checkLabel.title = task.completed ? "取消完成" : "标记完成";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = task.completed;
+        checkbox.disabled = isEditing;
+        checkbox.setAttribute(
+          "aria-label",
+          task.completed ? `取消完成：${task.text}` : `标记完成：${task.text}`
+        );
+        checkbox.addEventListener("change", () => toggleTask(task.id));
+
+        const checkboxVisual = document.createElement("span");
+        checkboxVisual.className = "checkbox-visual";
+        checkboxVisual.setAttribute("aria-hidden", "true");
+        checkboxVisual.innerHTML = CHECK_ICON;
+        checkLabel.append(checkbox, checkboxVisual);
+        row.append(checkLabel);
+
+        if (isEditing) {
+          row.append(createEditForm(task));
+        } else {
+          const text = document.createElement("span");
+          text.className = "task-text";
+          text.textContent = task.text;
+
+          const actions = document.createElement("div");
+          actions.className = "item-actions";
+
+          const editButton = document.createElement("button");
+          editButton.type = "button";
+          editButton.className = "icon-button edit-button";
+          editButton.setAttribute("aria-label", `编辑计划：${task.text}`);
+          editButton.title = "编辑";
+          editButton.innerHTML = EDIT_ICON;
+          editButton.addEventListener("click", () => beginEdit(task));
+
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "icon-button delete-button";
+          deleteButton.setAttribute("aria-label", `删除计划：${task.text}`);
+          deleteButton.title = "删除";
+          deleteButton.innerHTML = DELETE_ICON;
+          deleteButton.addEventListener("click", () => deleteTask(task));
+
+          actions.append(editButton, deleteButton);
+          row.append(text, actions);
+        }
+
+        return row;
+      }
+
+      function renderList() {
+        const tasks = getSelectedTasks();
+        elements.planList.replaceChildren(
+          ...tasks.map((task) => createTaskRow(task))
+        );
+        elements.planList.hidden = tasks.length === 0;
+        elements.emptyState.hidden = tasks.length > 0;
+
+        if (editingTaskId) {
+          focusAfterRender(editingTaskId, ".edit-input");
+        }
+      }
+
+      function renderProgress(tasks) {
+        const total = tasks.length;
+        const completed = tasks.filter((task) => task.completed).length;
+        const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+        const remaining = total - completed;
+
+        elements.progressPercent.textContent = String(percent);
+        elements.progressFill.style.width = `${percent}%`;
+        elements.progressBar.setAttribute("aria-valuenow", String(percent));
+        elements.progressBar.setAttribute(
+          "aria-valuetext",
+          `已完成 ${completed} 项，共 ${total} 项，完成度 ${percent}%`
+        );
+        elements.completionCount.textContent = `已完成 ${completed} / ${total} 项`;
+        elements.planCount.textContent = `${total} 项`;
+
+        elements.progressPanel.classList.toggle(
+          "is-complete",
+          total > 0 && completed === total
+        );
+
+        if (total === 0) {
+          elements.progressMessage.textContent = "从一个小目标开始吧。";
+          elements.remainingCount.textContent = "慢慢来，也会到达";
+        } else if (remaining === 0) {
+          elements.progressMessage.textContent = "全部完成，今天也很棒！";
+          elements.remainingCount.textContent = "今天的目标已达成";
+        } else if (completed === 0) {
+          elements.progressMessage.textContent = "准备好就开始，慢慢来。";
+          elements.remainingCount.textContent = `还剩 ${remaining} 项`;
+        } else {
+          elements.progressMessage.textContent = "保持自己的节奏，继续向前。";
+          elements.remainingCount.textContent = `还剩 ${remaining} 项`;
+        }
+      }
+
+      function renderProfileSwitcher() {
+        document.body.dataset.profile = activeProfile;
+
+        PROFILE_IDS.forEach((profileId) => {
+          const button = profileId === "a" ? elements.profileA : elements.profileB;
+          const count = profileId === "a"
+            ? elements.profileACount
+            : elements.profileBCount;
+          const tasks = getDayTasks(profileId, selectedDate);
+          const completed = tasks.filter((task) => task.completed).length;
+          const isActive = profileId === activeProfile;
+
+          button.setAttribute("aria-pressed", String(isActive));
+          button.setAttribute(
+            "aria-label",
+            `${isActive ? "当前为" : "切换到"}${PROFILE_CONFIG[profileId].name}的打卡界面，` +
+              `已完成 ${completed} 项，共 ${tasks.length} 项`
+          );
+          count.textContent = `${completed} / ${tasks.length}`;
+        });
+      }
+
+      function render() {
+        const tasks = getSelectedTasks();
+        const isToday = selectedDate === getTodayKey();
+        const profileName = PROFILE_CONFIG[activeProfile].name;
+
+        elements.dateInput.value = selectedDate;
+        elements.workspaceTitle.textContent =
+          `${profileName}的${isToday ? "今日计划" : "当日计划"}`;
+        elements.progressHeading.textContent =
+          `${profileName} · ${isToday ? "今日进度" : "当日进度"}`;
+        elements.selectedDateLabel.textContent = formatSelectedDate(selectedDate);
+        elements.todayButton.hidden = isToday;
+        document.title = `${profileName}的每日打卡`;
+
+        if (tasks.length === 0) {
+          elements.emptyTitle.textContent = isToday
+            ? `${profileName}今天还没有计划`
+            : `${profileName}这一天还没有计划`;
+          elements.emptyCopy.textContent =
+            "在上方写下第一件想完成的事。小小的一步，也算认真生活。";
+        }
+
+        renderProfileSwitcher();
+        renderProgress(tasks);
+        renderList();
+      }
+
+      function switchProfile(profileId) {
+        if (!PROFILE_IDS.includes(profileId) || profileId === activeProfile) {
+          return;
+        }
+
+        activeProfile = profileId;
+        store.activeProfile = activeProfile;
+        editingTaskId = null;
+        editDraft = "";
+        clearInputError();
+
+        if (selectedDate === getTodayKey()) {
+          initializeToday(profileId);
+        }
+        saveStore();
+        render();
+        announce(
+          `已切换到${PROFILE_CONFIG[profileId].name}的打卡界面，` +
+            "当前可以查看并编辑这位成员的计划。"
+        );
+      }
+
+      function selectDate(dateKey, message) {
+        if (!dateFromKey(dateKey)) {
+          elements.dateInput.value = selectedDate;
+          return;
+        }
+        selectedDate = dateKey;
+        editingTaskId = null;
+        editDraft = "";
+        clearInputError();
+        if (selectedDate === getTodayKey()) {
+          initializeToday(activeProfile);
+        }
+        render();
+        if (message) {
+          announce(message);
+        }
+      }
+
+      elements.planForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = elements.planInput.value.trim();
+        if (!text) {
+          showInputError("先写下计划内容，再添加到清单。");
+          elements.planInput.focus();
+          return;
+        }
+
+        const day = ensureDayRecord(selectedDate);
+        const task = {
+          id: makeId(),
+          text,
+          completed: false,
+          createdAt: new Date().toISOString()
+        };
+        day.tasks.push(task);
+        saveStore();
+        elements.planInput.value = "";
+        clearInputError();
+        render();
+        elements.planInput.focus();
+        announce(`已添加计划：${text}`);
+      });
+
+      elements.planInput.addEventListener("input", clearInputError);
+
+      elements.profileA.addEventListener("click", () => switchProfile("a"));
+      elements.profileB.addEventListener("click", () => switchProfile("b"));
+
+      elements.previousDay.addEventListener("click", () => {
+        selectDate(shiftDateKey(selectedDate, -1), `已切换到${formatSelectedDate(
+          shiftDateKey(selectedDate, -1)
+        )}`);
+      });
+
+      elements.nextDay.addEventListener("click", () => {
+        selectDate(shiftDateKey(selectedDate, 1), `已切换到${formatSelectedDate(
+          shiftDateKey(selectedDate, 1)
+        )}`);
+      });
+
+      elements.dateInput.addEventListener("change", () => {
+        selectDate(elements.dateInput.value, `已切换到${formatSelectedDate(
+          elements.dateInput.value
+        )}`);
+      });
+
+      elements.todayButton.addEventListener("click", () => {
+        selectDate(getTodayKey(), "已回到今天。");
+      });
+
+      initializeToday(activeProfile);
+      saveStore();
+      render();
+    })();
+  </script>
+</body>
+</html>
